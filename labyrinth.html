@@ -454,12 +454,11 @@ function MagicBall(mazeImg) {
     this.radarGapY = yStart
 
     if (hasGap) {
-      const isVisitedGap = this.isVisitedGap(this.radius, this.angle)
       const matchingGaps = this.matchingVisitedGaps(this.radius, this.angle)
       if (matchingGaps.length) {
         console.log(' matched:' + JSON.stringify(matchingGaps))
       }
-      if (!isVisitedGap) {
+      if (!matchingGaps.length) {
         // we save gap data only if more that 'gateWidth' from previous gap
           if (this.mode === 'rotate') {
             let gap = {x: xStart, y: yStart, angle: this.angle, radius: radarRadius, direction: this.direction}
@@ -484,7 +483,9 @@ function MagicBall(mazeImg) {
 
   // helper - debugging
   this.matchingVisitedGaps = () => {
-    return this.visitedGaps.filter(element => element.direction !== this.direction && Math.abs(element.radius - this.radius) < 15 && Math.abs(element.angle - this.angle) < 15)
+    return this.visitedGaps.filter(element => element.direction !== this.direction 
+    && (Math.abs(element.radius - this.radius) < 10 && Math.abs(element.angle - this.angle) < 10)
+    || (Math.abs(element.radius + this.radius) < 10 && Math.abs(element.angle + this.angle) < 10))
   }  
 
   this.renderBall = () => {   

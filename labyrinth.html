@@ -330,6 +330,7 @@ function prepareBackground() {
     };
 
   mazeImg.src = srcCanvas.toDataURL()
+  srcCanvas.parentNode.removeChild(srcCanvas);
 
   return mazeImg
 }

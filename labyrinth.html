@@ -241,9 +241,57 @@ function drawAsCircles() {
 }
 
 
+function hookUpScribbling() {
+  canvas = document.getElementById("canvas1")
+  c = canvas.getContext("2d")
+
+  var isDrawing = false
+  var lastX = 0
+  var lastY = 0
+
+  function getDirectlyOrFromFirstChangedTouch(event, key) {
+    return event[key] === undefined ? event.changedTouches[0][key] : event[key]
+  }
+
+  function startDrawing(event) {
+    lastX = getDirectlyOrFromFirstChangedTouch(event, "clientX")
+    lastY = getDirectlyOrFromFirstChangedTouch(event, "clientY")
+    isDrawing = true
+  }
+
+  function stopDrawing(event) {
+    isDrawing = false
+  }
+
+  function handleMove(event) {
+    if (isDrawing) {
+      x = getDirectlyOrFromFirstChangedTouch(event, "clientX")
+      y = getDirectlyOrFromFirstChangedTouch(event, "clientY")
+      c.lineWidth = 2
+      c.beginPath()
+      c.moveTo(lastX, lastY)
+      c.lineTo(x, y)
+      c.strokeStyle = '#ff0000'
+      c.stroke()
+      lastX = x
+      lastY = y
+    }
+  }
+
+  canvas.addEventListener('mousedown', startDrawing)
+  canvas.addEventListener('mouseup', stopDrawing)
+  canvas.addEventListener('mousemove', handleMove)
+  canvas.addEventListener('touchstart', startDrawing)
+  canvas.addEventListener('touchend', stopDrawing)
+  canvas.addEventListener('touchmove', handleMove)
+}
 
 
-// code below contains methods for finding labirynth solution
+
+/**
+/* code below contains methods for finding labirynth solution
+/*
+**/
 function findSolution() {
   step = 0
   const mazeImg = prepareBackground()
@@ -265,10 +313,10 @@ function startSearch() {
           return
           }
         step ++
-
         magicBall.go()
 
 }
+
 
 function prepareBackground() {
   const mazeImg = new Image();
@@ -293,7 +341,7 @@ function MagicBall(mazeImg) {
   angleDistance = 1
   ballStep = 1
 
-  this.ballRadius = gateWidth / 2 -2
+  this.ballRadius = gateWidth / 2 - 1
   
   this.direction = 'in'
   this.mode = this.direction // ['in', 'out', 'rotate']
@@ -324,7 +372,6 @@ function MagicBall(mazeImg) {
           {
             console.log('done')
             step = 15000
-            cancelAnimationFrame(animate)
           }
       this.move()
   }
@@ -406,20 +453,25 @@ function MagicBall(mazeImg) {
     this.radarGapX = xStart
     this.radarGapY = yStart
 
-
-    isGapVisited = this.isVisitedGap(this.radius, this.angle)
-
-    if (hasGap & !isGapVisited) {
-      // we save gap data only if more that 'gateWidth' from previous gap
-      if (this.mode === 'rotate') {
-        let gap = {x: xStart, y: yStart, angle: this.angle, radius: radarRadius, direction: this.direction}
-        this.visitedGaps.push(gap)
+    if (hasGap) {
+      const isVisitedGap = this.isVisitedGap(this.radius, this.angle)
+      const matchingGaps = this.matchingVisitedGaps(this.radius, this.angle)
+      if (matchingGaps.length) {
+        console.log(' matched:' + JSON.stringify(matchingGaps))
       }
-      
-      this.mode = this.direction
-      this.rotationChanged = 0
-      return true
-    }  
+      if (!isVisitedGap) {
+        // we save gap data only if more that 'gateWidth' from previous gap
+          if (this.mode === 'rotate') {
+            let gap = {x: xStart, y: yStart, angle: this.angle, radius: radarRadius, direction: this.direction}
+            this.visitedGaps.push(gap)
+            console.log(' gap: ' + this.direction + 'r adius: ' + this.radius+ ' angle: ' + this.angle + ' pos: ' + this.x+'/'+this.y)
+          }
+        
+        this.mode = this.direction
+        this.rotationChanged = 0
+        return true
+      }  
+    }
   }    
 
   // this method needs to be optimized, to not analyze all gaps
@@ -429,6 +481,11 @@ function MagicBall(mazeImg) {
       return Math.abs(element.radius - this.radius) < 15 && Math.abs(element.angle - this.angle) < 15
     })
   }
+
+  // helper - debugging
+  this.matchingVisitedGaps = () => {
+    return this.visitedGaps.filter(element => element.direction !== this.direction && Math.abs(element.radius - this.radius) < 15 && Math.abs(element.angle - this.angle) < 15)
+  }  
 
   this.renderBall = () => {   
     // clear and render background
@@ -470,53 +527,6 @@ function MagicBall(mazeImg) {
     return isWhite
   }
 
-}
-
-
-
-function hookUpScribbling() {
-  canvas = document.getElementById("canvas1")
-  c = canvas.getContext("2d")
-
-  var isDrawing = false
-  var lastX = 0
-  var lastY = 0
-
-  function getDirectlyOrFromFirstChangedTouch(event, key) {
-    return event[key] === undefined ? event.changedTouches[0][key] : event[key]
-  }
-
-  function startDrawing(event) {
-    lastX = getDirectlyOrFromFirstChangedTouch(event, "clientX")
-    lastY = getDirectlyOrFromFirstChangedTouch(event, "clientY")
-    isDrawing = true
-  }
-
-  function stopDrawing(event) {
-    isDrawing = false
-  }
-
-  function handleMove(event) {
-    if (isDrawing) {
-      x = getDirectlyOrFromFirstChangedTouch(event, "clientX")
-      y = getDirectlyOrFromFirstChangedTouch(event, "clientY")
-      c.lineWidth = 2
-      c.beginPath()
-      c.moveTo(lastX, lastY)
-      c.lineTo(x, y)
-      c.strokeStyle = '#ff0000'
-      c.stroke()
-      lastX = x
-      lastY = y
-    }
-  }
-
-  canvas.addEventListener('mousedown', startDrawing)
-  canvas.addEventListener('mouseup', stopDrawing)
-  canvas.addEventListener('mousemove', handleMove)
-  canvas.addEventListener('touchstart', startDrawing)
-  canvas.addEventListener('touchend', stopDrawing)
-  canvas.addEventListener('touchmove', handleMove)
 }
 
 window.onload = function() {

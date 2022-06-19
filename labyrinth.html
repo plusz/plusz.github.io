@@ -344,11 +344,14 @@ function prepareBackground() {
 function MagicBall(mazeImg) {
   radiansLimit = Math.PI * 2
   radians90 = Math.PI/2
-  radians15 = Math.PI/12
+  radians10 = Math.PI/18  
   radarDistance = 1
   angleDistance = 1
   ballStep = 1  
-  angleStep = 0.01
+  angleStep = 0.012
+  // TODO calculate this from gate width
+  angleGapWidth = 0.040
+  startRadius = 300
 
   ballFillStyle = []
   ballFillStyle['in'] = 'red'
@@ -364,16 +367,13 @@ function MagicBall(mazeImg) {
   this.rotation = 'clockwise' // ['clockwise', 'counterclockwise']
   this.gapCentered = false
 
-  this.radius = 300
+  this.radius = startRadius
   this.angle = 3*Math.PI / 2
   
   this.rotationChanged = 0
   this.visitedGaps = []
 
-  // this require improvements
-  // displayed radar interfere with collision detection
-  this.displayHorizontRadar = false
-  this.displayGapRadar = false
+  // TODO this require improvements  
   this.renderVisitedGaps = false  
 
   this.go = () => {
@@ -434,7 +434,7 @@ function MagicBall(mazeImg) {
     yDist = angleDirection
 
     // check horizontal image
-    const hasHorizontalWall = this.checkWall(xStart, yStart, xDist, yDist)
+    const hasHorizontalWall = !this.checkPixels(xStart, yStart, xDist, yDist)
     
     if (hasHorizontalWall && this.mode === 'rotate') {
       this.changeRotation()          
@@ -442,35 +442,38 @@ function MagicBall(mazeImg) {
     } 
   }
 
-  this.checkWall = (xStart, yStart, xDist, yDist) => {
-    const horizontalWallPixels = canvas_maze.getImageData(xStart, yStart, xDist, yDist)
-    // helper coordinates to display radar
-    this.radarHorizontX = xStart
-    this.radarHorizontY = yStart
-    return !this.checkIfWhite(horizontalWallPixels.data)
+  this.checkPixels = (xStart, yStart, xDist, yDist) => {
+    const wallPixels = canvas_maze.getImageData(xStart, yStart, xDist, yDist)
+    return this.checkIfWhite(wallPixels.data)
   }
-    
-  this.checkArcWall = () => {
-    // check gap or wall
-    //  TODO this method may need to take more than 1 pixel to check gate/wall
-    xDist = radarDistance * angleDirection
-    yDist = radarDistance * angleDirection
 
+
+  this.checkArcWall = () => {    
     radarDirection = this.radiusDirection === 'in' ? -1 : 1
     radarRadius = this.radius + radarDirection*this.ballRadius
     
     xStart= this.getXfromAngle(centerX, radarRadius, this.angle)    
     yStart= this.getYfromAngle(centerY, radarRadius, this.angle)    
- 
-    arcWallPixels = canvas_maze.getImageData(xStart, yStart, xDist, yDist)
+    //  TODO this method may need to take more than 1 pixel to check gate/wall
+    xDist = radarDistance * angleDirection
+    yDist = radarDistance * angleDirection
 
-    hasGap = this.checkIfWhite(arcWallPixels.data)
-
-    // we sue this for displaying radar
-    this.radarGapX = xStart
-    this.radarGapY = yStart
+    hasGap = this.checkPixels(xStart, yStart, xDist, yDist)    
 
     if (hasGap) {
+      // we chck additional points to confirm gap      
+      xStart1 = this.getXfromAngle(centerX, radarRadius, this.angle-angleGapWidth*(startRadius/this.radius/2))    
+      yStart1 = this.getYfromAngle(centerY, radarRadius, this.angle-angleGapWidth*(startRadius/this.radius/2))    
+      xStart2 = this.getXfromAngle(centerX, radarRadius, this.angle+angleGapWidth*(startRadius/this.radius/2))    
+      yStart2 = this.getYfromAngle(centerY, radarRadius, this.angle+angleGapWidth*(startRadius/this.radius/2))    
+
+      hasGap1 = this.checkPixels(xStart1, yStart1, xDist, yDist)    
+      hasGap2 = this.checkPixels(xStart2, yStart2, xDist, yDist)    
+
+      if (!hasGap1 & !hasGap2) {
+        return false
+      }
+
       // this is to move ball one step more after detecting gap
       if (!this.gapCentered && this.mode === 'rotate') {
           //this.angle += angleDirection/2
@@ -525,7 +528,7 @@ function MagicBall(mazeImg) {
   // after tuniing we can replace it with array.some
   this.matchingVisitedGaps = (radius, angle, direction) => {
     return this.visitedGaps.filter(element => element.direction !== direction 
-    && (element.radius > radius-10 && element.radius < radius+10 && element.angle > angle-radians15 && element.angle < angle+radians15))
+    && (element.radius > radius-10 && element.radius < radius+10 && element.angle > angle-radians10 && element.angle < angle+radians10))
   }  
 
   this.renderBall = () => {   
@@ -548,19 +551,6 @@ function MagicBall(mazeImg) {
         canvas_maze.fill()   
       });
     }
-
-    if (this.displayHorizontRadar) {
-        canvas_maze.beginPath()
-        canvas_maze.arc(this.radarHorizontX, this.radarHorizontY, this.ballRadius/4, 0, 2 * Math.PI, false)
-        canvas_maze.fillStyle = 'orange'
-        canvas_maze.fill()    
-    }
-    if (this.displayGapRadar) {
-        canvas_maze.beginPath()
-        canvas_maze.arc(this.radarGapX, this.radarGapY, this.ballRadius/4, 0, 2 * Math.PI, false)
-        canvas_maze.fillStyle = 'yellow'
-        canvas_maze.fill()        
-      }
   }   
 
   this.checkIfWhite = (pixels) => {

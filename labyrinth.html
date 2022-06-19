@@ -350,7 +350,7 @@ function MagicBall(mazeImg) {
   ballStep = 1  
   angleStep = 0.012
   // TODO calculate this from gate width
-  angleGapWidth = 0.040
+  //angleGapWidth = 0.040
   startRadius = 300
 
   ballFillStyle = []
@@ -365,7 +365,6 @@ function MagicBall(mazeImg) {
   this.radiusDirection = 'in' // ['in', 'out']
   this.mode = 'inOut' // ['inOut', 'rotate']
   this.rotation = 'clockwise' // ['clockwise', 'counterclockwise']
-  this.gapCentered = false
 
   this.radius = startRadius
   this.angle = 3*Math.PI / 2
@@ -421,7 +420,6 @@ function MagicBall(mazeImg) {
 
     this.mode = 'rotate'   
     this.ballColor = ballFillStyle[this.radiusDirection]
-    this.gapCentered = false 
   }
 
   this.checkHorizontalWall = () => {
@@ -462,23 +460,27 @@ function MagicBall(mazeImg) {
 
     if (hasGap) {
       // we chck additional points to confirm gap      
+      /*
       xStart1 = this.getXfromAngle(centerX, radarRadius, this.angle-angleGapWidth*(startRadius/this.radius/2))    
       yStart1 = this.getYfromAngle(centerY, radarRadius, this.angle-angleGapWidth*(startRadius/this.radius/2))    
       xStart2 = this.getXfromAngle(centerX, radarRadius, this.angle+angleGapWidth*(startRadius/this.radius/2))    
       yStart2 = this.getYfromAngle(centerY, radarRadius, this.angle+angleGapWidth*(startRadius/this.radius/2))    
+      */
+
+      reduceBallSize = 4
+      xStart1 = this.getXfromAngle(xStart, this.ballRadius-reduceBallSize, this.angle+radians90)    
+      yStart1 = this.getYfromAngle(yStart, this.ballRadius-reduceBallSize, this.angle+radians90)    
+      xStart2 = this.getXfromAngle(xStart, this.ballRadius-reduceBallSize, this.angle-radians90)    
+      yStart2 = this.getYfromAngle(yStart, this.ballRadius-reduceBallSize, this.angle-radians90)    
+
 
       hasGap1 = this.checkPixels(xStart1, yStart1, xDist, yDist)    
       hasGap2 = this.checkPixels(xStart2, yStart2, xDist, yDist)    
 
-      if (!hasGap1 & !hasGap2) {
+      if (!hasGap1 || !hasGap2) {
         return false
       }
 
-      // this is to move ball one step more after detecting gap
-      if (!this.gapCentered && this.mode === 'rotate') {
-          //this.angle += angleDirection/2
-          this.gapCentered = true
-      }
       const matchingGaps = this.matchingVisitedGaps(this.radius, this.angle, this.radiusDirection)
 
       if (matchingGaps.length) {
@@ -518,10 +520,10 @@ function MagicBall(mazeImg) {
   }  
 
   this.getXfromAngle = (cx, radius, angle) => {
-    return Math.round(cx + radius * Math.cos(angle))
+    return Math.floor(cx + radius * Math.cos(angle))
   }
   this.getYfromAngle = (cy, radius, angle) => {
-    return Math.round(cy + radius * Math.sin(angle))
+    return Math.floor(cy + radius * Math.sin(angle))
   }  
 
   // this method needs to be optimized, to not analyze all gaps

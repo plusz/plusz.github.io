@@ -372,11 +372,10 @@ function MagicBall(mazeImg) {
   radians10 = Math.PI/18  
   radarDistance = 1
   angleDistance = 1
+  radiusStep = 1
   ballStep = 1  
-  angleStep = 0.0075
-  // TODO calculate this from gate width
-  //angleGapWidth = 0.040
-  startRadius = 300
+  angleStep = 0.0075  
+  startRadius = 280
   prevRadius = startRadius
 
   ballFillStyle = []
@@ -406,8 +405,7 @@ function MagicBall(mazeImg) {
       this.detectWalls() 
       this.renderBall();
 
-      if ((Math.abs(this.x - 400) < 30 && Math.abs(this.y-400) < 30)
-      || this.y<30 || this.y>750 || this.x<30 || this.x>750)
+      if ((Math.abs(this.x - centerX) < centerX/20 && Math.abs(this.y-centerY) < centerY/20))
           {
             console.log('done')
             cancelAnimationFrame(animate)
@@ -419,7 +417,7 @@ function MagicBall(mazeImg) {
   this.move = () => {
       switch (this.mode) {
         case 'inOut':           
-          this.radius += (this.radiusDirection === 'in' ? -1 : 1)
+          this.radius += (this.radiusDirection === 'in' ? -radiusStep : radiusStep)
           break        
         case 'rotate':  
           this.angle = (this.angle + ((this.rotation === 'counterclockwise') ? -angleStep : angleStep)) % radiansLimit
@@ -432,10 +430,8 @@ function MagicBall(mazeImg) {
     
   };
 
+  // detects if there is gap or horizontal wall
   this.detectWalls = () => {
-    const surroundingPixel = []    
-    let xStart, yStart
-
     if (this.mode === 'rotate') {
       this.checkHorizontalWall()
     }
@@ -448,6 +444,8 @@ function MagicBall(mazeImg) {
     this.ballColor = ballFillStyle[this.radiusDirection]
   }
 
+
+  // detects if there is horizontal wall
   this.checkHorizontalWall = () => {
     // check horizontalWall
     angleDirection = this.getAngleDirection()
@@ -465,12 +463,6 @@ function MagicBall(mazeImg) {
       return true
     } 
   }
-
-  this.checkPixels = (xStart, yStart, xDist, yDist) => {
-    const wallPixels = canvas_maze.getImageData(xStart, yStart, xDist, yDist)
-    return this.checkIfWhite(wallPixels.data)
-  }
-
 
   this.checkArcWall = () => {    
     radarDirection = this.radiusDirection === 'in' ? -1 : 1
@@ -537,9 +529,24 @@ function MagicBall(mazeImg) {
     }
   }    
   
+  // detects if there is gap or horizontal wall
+  this.checkPixels = (xStart, yStart, xDist, yDist) => {
+    const wallPixels = canvas_maze.getImageData(xStart, yStart, xDist, yDist)
+    return this.checkIfWhite(wallPixels.data)
+  }
+
+  // detects if pixels are white
+  this.checkIfWhite = (pixels) => {
+    isWhite = pixels.reduce((partialSum, a) => partialSum + a, 0) / pixels.length === 255
+    return isWhite
+  }  
+
+  // sets rotation multiplier
   this.getAngleDirection = () => {
     return this.rotation === 'clockwise' ? 1 : -1
   }
+
+  // changes ball rotation
   this.changeRotation = () => {
     this.rotation = this.rotation === 'clockwise' ? 'counterclockwise' : 'clockwise'  
     this.rotationChanged += 1 
@@ -549,10 +556,12 @@ function MagicBall(mazeImg) {
       }    
   }
 
+  // changes ball inOut direction
   this.changeRadiusDirection = () => {
     this.radiusDirection = this.radiusDirection === 'in' ? 'out':'in'      
   }  
 
+  // gets XY coordinates from center, angle, radius
   this.getXfromAngle = (cx, radius, angle) => {
     return Math.round(cx + radius * Math.cos(angle))
   }
@@ -561,12 +570,13 @@ function MagicBall(mazeImg) {
   }  
 
   // this method needs to be optimized, to not analyze all gaps
-  // after tuniing we can replace it with array.some
+  // after tuning we can replace it with array.some
   this.matchingVisitedGaps = (radius, angle, direction) => {
     return this.visitedGaps.filter(element => element.direction !== direction 
     && (element.radius > radius-10 && element.radius < radius+10 && element.angle > angle-radians10 && element.angle < angle+radians10))
   }  
 
+  // renders ball
   this.renderBall = () => {   
     // clear and render background
     canvas_maze.fillStyle = '#ffffff'
@@ -579,7 +589,6 @@ function MagicBall(mazeImg) {
     canvas_maze.fillStyle = this.ballColor
     canvas_maze.fill()    
   
-
     if (this.renderVisitedGaps) {
       this.visitedGaps.forEach(element => {
         canvas_maze.beginPath()
@@ -590,11 +599,7 @@ function MagicBall(mazeImg) {
     }
   }   
 
-  this.checkIfWhite = (pixels) => {
-    isWhite = pixels.reduce((partialSum, a) => partialSum + a, 0) / pixels.length === 255
-    return isWhite
-  }
-
+  // initial ball position
   this.x = centerX
   this.y = this.getYfromAngle(centerY, this.radius, this.angle)  
 

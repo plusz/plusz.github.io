@@ -370,19 +370,20 @@ function MagicBall(mazeImg) {
   radiansLimit = Math.PI * 2
   radians90 = Math.PI/2
   radians10 = Math.PI/18  
+  startRadius = 280
+
   radarDistance = 1
   angleDistance = 1
   radiusStep = 1
   ballStep = 1  
   angleStep = 0.0075  
-  startRadius = 280
-  prevRadius = startRadius
+    
+  this.prevRadius = startRadius
 
   ballFillStyle = []
   ballFillStyle['in'] = 'red'
   ballFillStyle['out'] = 'blue'
   ballFillStyle['gap'] = 'orange'
-  ballFillStyle['gaplock'] = 'green'
     
   this.ballRadius = gateWidth / 2 - 2
   
@@ -405,12 +406,15 @@ function MagicBall(mazeImg) {
       this.detectWalls() 
       this.renderBall();
 
+      // check success
       if ((Math.abs(this.x - centerX) < centerX/20 && Math.abs(this.y-centerY) < centerY/20))
           {
             console.log('done')
             cancelAnimationFrame(animate)
             step = 15000
           }
+
+      // move to next step    
       this.move()
   }
   
@@ -425,6 +429,7 @@ function MagicBall(mazeImg) {
           break          
       }
 
+    // gets ball coordinates
     this.x = this.getXfromAngle(centerX, this.radius, this.angle)    
     this.y = this.getYfromAngle(centerY, this.radius, this.angle)    
     
@@ -515,10 +520,10 @@ function MagicBall(mazeImg) {
         this.ballColor = ballFillStyle['gap']
         
           // We save gate only if radius decreased 
-          if (Math.abs(radarRadius-prevRadius) > gateWidth/2) {
-            let gap = {x: xStart, y: yStart, angle: this.angle, radius: prevRadius, direction: this.radiusDirection}
+          if (Math.abs(radarRadius-this.prevRadius) > gateWidth) {
+            let gap = {x: xStart, y: yStart, angle: this.angle, radius: this.prevRadius, direction: this.radiusDirection}
             console.log(' gap: ' + this.radiusDirection + ' radius: ' + this.radius+ ' angle: ' + this.angle + ' pos: ' + this.x+'/'+this.y)
-            prevRadius = radarRadius
+            this.prevRadius = radarRadius
             this.visitedGaps.push(gap)            
           }
         

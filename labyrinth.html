@@ -1,5 +1,10 @@
 <html>
 <head>
+  <style>
+    body {
+      cursor: crosshair;
+    }    
+  </style>
 <script>
 
 gateWidth = 20
@@ -287,6 +292,25 @@ function hookUpScribbling() {
   canvas.addEventListener('touchmove', handleMove)
 }
 
+function positionDetection() {
+  canvas = document.getElementById("canvas_maze")
+  c = canvas.getContext("2d")
+
+  function getDirectlyOrFromFirstChangedTouch(event, key) {
+    return event[key] === undefined ? event.changedTouches[0][key] : event[key]
+  }
+
+  function checkPosition(event) {
+    lastX = getDirectlyOrFromFirstChangedTouch(event, "clientX")
+    lastY = getDirectlyOrFromFirstChangedTouch(event, "clientY")
+    console.log(lastX, lastY)
+  }
+
+  canvas.addEventListener('mousedown', checkPosition)
+  canvas.addEventListener('touchstart', checkPosition)
+
+}
+
 
 
 /**
@@ -298,6 +322,7 @@ function findSolution() {
 
   if (!mazeImg) {
     mazeImg = prepareBackground()
+    positionDetection()
   }
 
   magicBall = new MagicBall(mazeImg)    
@@ -348,10 +373,11 @@ function MagicBall(mazeImg) {
   radarDistance = 1
   angleDistance = 1
   ballStep = 1  
-  angleStep = 0.012
+  angleStep = 0.0075
   // TODO calculate this from gate width
   //angleGapWidth = 0.040
   startRadius = 300
+  prevRadius = startRadius
 
   ballFillStyle = []
   ballFillStyle['in'] = 'red'
@@ -359,7 +385,7 @@ function MagicBall(mazeImg) {
   ballFillStyle['gap'] = 'orange'
   ballFillStyle['gaplock'] = 'green'
     
-  this.ballRadius = gateWidth / 2 - 1
+  this.ballRadius = gateWidth / 2 - 2
   
   this.ballColor = ballFillStyle['in']
   this.radiusDirection = 'in' // ['in', 'out']
@@ -410,8 +436,8 @@ function MagicBall(mazeImg) {
     const surroundingPixel = []    
     let xStart, yStart
 
-    if (this.checkHorizontalWall()) {
-      //return
+    if (this.mode === 'rotate') {
+      this.checkHorizontalWall()
     }
 
     if (this.checkArcWall()) {
@@ -424,7 +450,7 @@ function MagicBall(mazeImg) {
 
   this.checkHorizontalWall = () => {
     // check horizontalWall
-    angleDirection = this.rotation === 'clockwise' ? 1 : -1
+    angleDirection = this.getAngleDirection()
     xStart = this.getXfromAngle(this.x, this.ballRadius, this.angle+radians90*angleDirection)
     yStart = this.getYfromAngle(this.y, this.ballRadius, this.angle+radians90*angleDirection)
 
@@ -452,51 +478,56 @@ function MagicBall(mazeImg) {
     
     xStart= this.getXfromAngle(centerX, radarRadius, this.angle)    
     yStart= this.getYfromAngle(centerY, radarRadius, this.angle)    
-    //  TODO this method may need to take more than 1 pixel to check gate/wall
+
+    let angleDirection = this.getAngleDirection()
     xDist = radarDistance * angleDirection
     yDist = radarDistance * angleDirection
 
     hasGap = this.checkPixels(xStart, yStart, xDist, yDist)    
 
     if (hasGap) {
-      // we chck additional points to confirm gap      
+      // we chck additional points to confirm gap - angle method
       /*
       xStart1 = this.getXfromAngle(centerX, radarRadius, this.angle-angleGapWidth*(startRadius/this.radius/2))    
       yStart1 = this.getYfromAngle(centerY, radarRadius, this.angle-angleGapWidth*(startRadius/this.radius/2))    
       xStart2 = this.getXfromAngle(centerX, radarRadius, this.angle+angleGapWidth*(startRadius/this.radius/2))    
       yStart2 = this.getYfromAngle(centerY, radarRadius, this.angle+angleGapWidth*(startRadius/this.radius/2))    
       */
-
+ 
+      // we chck additional points to confirm gap - radius method
       reduceBallSize = 4
       xStart1 = this.getXfromAngle(xStart, this.ballRadius-reduceBallSize, this.angle+radians90)    
       yStart1 = this.getYfromAngle(yStart, this.ballRadius-reduceBallSize, this.angle+radians90)    
       xStart2 = this.getXfromAngle(xStart, this.ballRadius-reduceBallSize, this.angle-radians90)    
       yStart2 = this.getYfromAngle(yStart, this.ballRadius-reduceBallSize, this.angle-radians90)    
 
-
+      // added 3rd radar which helps t avoid most wall crashes and ball stuck
+      xStart3 = this.getXfromAngle(xStart, this.ballRadius-reduceBallSize-2, this.angle)    
+      yStart3 = this.getYfromAngle(yStart, this.ballRadius-reduceBallSize-2, this.angle)          
+ 
       hasGap1 = this.checkPixels(xStart1, yStart1, xDist, yDist)    
-      hasGap2 = this.checkPixels(xStart2, yStart2, xDist, yDist)    
+      hasGap2 = this.checkPixels(xStart2, yStart2, xDist, yDist)   
+      hasGap3 = this.checkPixels(xStart3, yStart3, xDist, yDist)   
 
-      if (!hasGap1 || !hasGap2) {
+      if (!hasGap1 || !hasGap2 || !hasGap3) {
         return false
       }
 
       const matchingGaps = this.matchingVisitedGaps(this.radius, this.angle, this.radiusDirection)
 
+      // TODO we may here mark 'revisited' gaps to track successfull/last visited only
       if (matchingGaps.length) {
-        this.ballColor = ballFillStyle['gaplock']
-        console.log(' checking:' + radarDirection + ' radius: ' + this.radius+ ' angle: ' + this.angle + ' pos: ' + this.x+'/'+this.y)
         console.log(' matched:' + JSON.stringify(matchingGaps))
       }
       if (matchingGaps.length === 0) {
         this.ballColor = ballFillStyle['gap']
-        // we save gap data only if more that 'gateWidth' from previous gap
-
-          // TODO we must save gaps also if we go from one gap to another without changing mode to rotate
-          if (this.mode === 'rotate' || this.mode === 'inOut') {
-            let gap = {x: xStart, y: yStart, angle: this.angle, radius: radarRadius, direction: this.radiusDirection}
-            this.visitedGaps.push(gap)
+        
+          // We save gate only if radius decreased 
+          if (Math.abs(radarRadius-prevRadius) > gateWidth/2) {
+            let gap = {x: xStart, y: yStart, angle: this.angle, radius: prevRadius, direction: this.radiusDirection}
             console.log(' gap: ' + this.radiusDirection + ' radius: ' + this.radius+ ' angle: ' + this.angle + ' pos: ' + this.x+'/'+this.y)
+            prevRadius = radarRadius
+            this.visitedGaps.push(gap)            
           }
         
         this.mode = 'inOut'
@@ -506,7 +537,10 @@ function MagicBall(mazeImg) {
     }
   }    
   
-  this.changeRotation= () => {
+  this.getAngleDirection = () => {
+    return this.rotation === 'clockwise' ? 1 : -1
+  }
+  this.changeRotation = () => {
     this.rotation = this.rotation === 'clockwise' ? 'counterclockwise' : 'clockwise'  
     this.rotationChanged += 1 
       if (this.rotationChanged === 2) {
@@ -520,10 +554,10 @@ function MagicBall(mazeImg) {
   }  
 
   this.getXfromAngle = (cx, radius, angle) => {
-    return Math.floor(cx + radius * Math.cos(angle))
+    return Math.round(cx + radius * Math.cos(angle))
   }
   this.getYfromAngle = (cy, radius, angle) => {
-    return Math.floor(cy + radius * Math.sin(angle))
+    return Math.round(cy + radius * Math.sin(angle))
   }  
 
   // this method needs to be optimized, to not analyze all gaps
@@ -541,9 +575,10 @@ function MagicBall(mazeImg) {
 
     // render ball
     canvas_maze.beginPath()
-    canvas_maze.arc(this.x, this.y, this.ballRadius - 2, 0, 2 * Math.PI, false)
+    canvas_maze.arc(this.x, this.y, this.ballRadius - 3, 0, 2 * Math.PI, false)
     canvas_maze.fillStyle = this.ballColor
     canvas_maze.fill()    
+  
 
     if (this.renderVisitedGaps) {
       this.visitedGaps.forEach(element => {

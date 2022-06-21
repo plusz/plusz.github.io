@@ -376,7 +376,8 @@ function MagicBall(mazeImg) {
   angleDistance = 1
   radiusStep = 1
   ballStep = 1  
-  angleStep = 0.0075  
+  reduceRadarRadius = 5
+  angleStep = 0.008
     
   this.prevRadius = startRadius
 
@@ -384,7 +385,7 @@ function MagicBall(mazeImg) {
   ballFillStyle['in'] = 'red'
   ballFillStyle['out'] = 'blue'
   ballFillStyle['gap'] = 'orange'
-    
+        
   this.ballRadius = gateWidth / 2 - 2
   
   this.ballColor = ballFillStyle['in']
@@ -397,9 +398,11 @@ function MagicBall(mazeImg) {
   
   this.rotationChanged = 0
   this.visitedGaps = []
+  this.gapId = 0
 
   // TODO this require improvements  
   this.renderVisitedGaps = false  
+  showRadar = false
 
   this.go = () => {
       // check collision      
@@ -410,6 +413,7 @@ function MagicBall(mazeImg) {
       if ((Math.abs(this.x - centerX) < centerX/20 && Math.abs(this.y-centerY) < centerY/20))
           {
             console.log('done')
+            this.drawPath()
             cancelAnimationFrame(animate)
             step = 15000
           }
@@ -454,8 +458,8 @@ function MagicBall(mazeImg) {
   this.checkHorizontalWall = () => {
     // check horizontalWall
     angleDirection = this.getAngleDirection()
-    xStart = this.getXfromAngle(this.x, this.ballRadius, this.angle+radians90*angleDirection)
-    yStart = this.getYfromAngle(this.y, this.ballRadius, this.angle+radians90*angleDirection)
+    xStart = this.getXfromAngle(this.x, this.ballRadius-1, this.angle+radians90*angleDirection)
+    yStart = this.getYfromAngle(this.y, this.ballRadius-1, this.angle+radians90*angleDirection)
 
     xDist = angleDirection
     yDist = angleDirection
@@ -473,8 +477,8 @@ function MagicBall(mazeImg) {
     radarDirection = this.radiusDirection === 'in' ? -1 : 1
     radarRadius = this.radius + radarDirection*this.ballRadius
     
-    xStart= this.getXfromAngle(centerX, radarRadius, this.angle)    
-    yStart= this.getYfromAngle(centerY, radarRadius, this.angle)    
+    xStart = this.getXfromAngle(centerX, radarRadius, this.angle)    
+    yStart = this.getYfromAngle(centerY, radarRadius, this.angle)    
 
     let angleDirection = this.getAngleDirection()
     xDist = radarDistance * angleDirection
@@ -492,21 +496,26 @@ function MagicBall(mazeImg) {
       */
  
       // we chck additional points to confirm gap - radius method
-      reduceBallSize = 4
-      xStart1 = this.getXfromAngle(xStart, this.ballRadius-reduceBallSize, this.angle+radians90)    
-      yStart1 = this.getYfromAngle(yStart, this.ballRadius-reduceBallSize, this.angle+radians90)    
-      xStart2 = this.getXfromAngle(xStart, this.ballRadius-reduceBallSize, this.angle-radians90)    
-      yStart2 = this.getYfromAngle(yStart, this.ballRadius-reduceBallSize, this.angle-radians90)    
+      xStart1 = this.getXfromAngle(xStart, this.ballRadius-reduceRadarRadius, this.angle+radians90)    
+      yStart1 = this.getYfromAngle(yStart, this.ballRadius-reduceRadarRadius, this.angle+radians90)    
+      xStart2 = this.getXfromAngle(xStart, this.ballRadius-reduceRadarRadius, this.angle-radians90)    
+      yStart2 = this.getYfromAngle(yStart, this.ballRadius-reduceRadarRadius, this.angle-radians90)    
 
       // added 3rd radar which helps t avoid most wall crashes and ball stuck
-      xStart3 = this.getXfromAngle(xStart, this.ballRadius-reduceBallSize-2, this.angle)    
-      yStart3 = this.getYfromAngle(yStart, this.ballRadius-reduceBallSize-2, this.angle)          
- 
+      xStart3 = this.getXfromAngle(xStart, this.ballRadius-reduceRadarRadius-2, this.angle)    
+      yStart3 = this.getYfromAngle(yStart, this.ballRadius-reduceRadarRadius-2, this.angle)          
+      xStart4 = this.getXfromAngle(xStart, this.ballRadius-reduceRadarRadius-1, this.angle)    
+      yStart4 = this.getYfromAngle(yStart, this.ballRadius-reduceRadarRadius-1, this.angle)          
+
       hasGap1 = this.checkPixels(xStart1, yStart1, xDist, yDist)    
       hasGap2 = this.checkPixels(xStart2, yStart2, xDist, yDist)   
       hasGap3 = this.checkPixels(xStart3, yStart3, xDist, yDist)   
+      hasGap4 = this.checkPixels(xStart4, yStart4, xDist, yDist)   
 
-      if (!hasGap1 || !hasGap2 || !hasGap3) {
+      this.radarX4 = xStart4
+      this.radarY4 = yStart4
+
+      if (!hasGap1 || !hasGap2 || !hasGap3 || !hasGap4) {
         return false
       }
 
@@ -520,11 +529,12 @@ function MagicBall(mazeImg) {
         this.ballColor = ballFillStyle['gap']
         
           // We save gate only if radius decreased 
-          if (Math.abs(radarRadius-this.prevRadius) > gateWidth) {
-            let gap = {x: xStart, y: yStart, angle: this.angle, radius: this.prevRadius, direction: this.radiusDirection}
-            console.log(' gap: ' + this.radiusDirection + ' radius: ' + this.radius+ ' angle: ' + this.angle + ' pos: ' + this.x+'/'+this.y)
+          if (Math.abs(radarRadius-this.prevRadius) > gateWidth/2) {
+            let gap = {id: this.gapId, x: xStart, y: yStart, angle: this.angle, radius: this.prevRadius, direction: this.radiusDirection, rotation: this.rotation}
+            console.log(JSON.stringify(gap))
             this.prevRadius = radarRadius
             this.visitedGaps.push(gap)            
+            this.gapId++
           }
         
         this.mode = 'inOut'
@@ -593,16 +603,25 @@ function MagicBall(mazeImg) {
     canvas_maze.arc(this.x, this.y, this.ballRadius - 3, 0, 2 * Math.PI, false)
     canvas_maze.fillStyle = this.ballColor
     canvas_maze.fill()    
-  
-    if (this.renderVisitedGaps) {
-      this.visitedGaps.forEach(element => {
-        canvas_maze.beginPath()
-        canvas_maze.arc(element.x, element.y, this.ballRadius/4, 0, 2 * Math.PI, false)
+
+    if (showRadar) {
+      canvas_maze.beginPath()
+        canvas_maze.arc(this.radarX4, this.radarY4, 1, 0, 2 * Math.PI, false)
         canvas_maze.fillStyle = 'green'
+        canvas_maze.fill() 
+    }
+      
+
+  }   
+
+  this.drawPath = () => {
+    this.visitedGaps.forEach(element => {
+        canvas_maze.beginPath()
+        canvas_maze.arc(element.x, element.y, 1, 0, 2 * Math.PI, false)
+        canvas_maze.fillStyle = element.direction === 'in' ? 'red' : 'blue'
         canvas_maze.fill()   
       });
-    }
-  }   
+  }
 
   // initial ball position
   this.x = centerX

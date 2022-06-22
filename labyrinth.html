@@ -378,7 +378,7 @@ function MagicBall(mazeImg) {
   radiusStep = 1
   ballStep = 1  
   reduceRadarRadius = 5
-  angleStep = 0.008
+  angleStep = 0.01
     
   this.prevRadius = startRadius
 
@@ -590,7 +590,7 @@ function MagicBall(mazeImg) {
   this.matchingVisitedGaps = (radius, angle, direction) => {
     return this.visitedGaps.filter(element => element.direction !== direction 
     && (
-      (element.radius > radius-12 && element.radius < radius+12)
+      (element.radius > radius-14 && element.radius < radius+14)
          && element.angle > angle-radians15 && element.angle < angle+radians15
          )
          

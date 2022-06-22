@@ -370,6 +370,7 @@ function MagicBall(mazeImg) {
   radiansLimit = Math.PI * 2
   radians90 = Math.PI/2
   radians10 = Math.PI/18  
+  radians15 = 2*Math.PI/24
   startRadius = 280
 
   radarDistance = 1
@@ -588,7 +589,12 @@ function MagicBall(mazeImg) {
   // after tuning we can replace it with array.some
   this.matchingVisitedGaps = (radius, angle, direction) => {
     return this.visitedGaps.filter(element => element.direction !== direction 
-    && (element.radius > radius-10 && element.radius < radius+10 && element.angle > angle-radians10 && element.angle < angle+radians10))
+    && (
+      (element.radius > radius-12 && element.radius < radius+12)
+         && element.angle > angle-radians15 && element.angle < angle+radians15
+         )
+         
+    )
   }  
 
   // renders ball

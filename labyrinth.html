@@ -7,6 +7,9 @@
   </style>
 <script>
 
+successCount = 0
+failedCount = 0
+
 gateWidth = 20
 boardWidth = 400
 
@@ -18,6 +21,7 @@ centerY = 400
 
 gates = []
 walls = []
+stepsArr = []
 
 animate = null
 mazeImg = null
@@ -312,12 +316,36 @@ function positionDetection() {
 }
 
 
+function initialize() {  
+  if (!document.getElementById("unlimited").checked) {
+      return
+    }
+
+  gates = []
+  walls = []
+  step = 0
+  stepsArr = []
+  animate = null
+  mazeImg = null 
+
+  srcCanvas = document.getElementById("canvas1")
+  srcCanvas.style.display = 'block';
+  canvas_maze = document.getElementById("canvas_maze").getContext("2d")
+  
+  srcCanvas.getContext("2d").clearRect(0, 0, srcCanvas.width, srcCanvas.height);
+
+  populateGatesAndWalls()  
+  drawAsCircles()
+  findSolution()
+
+}
 
 /**
 /* code below contains methods for finding labirynth solution
 /*
 **/
 function findSolution() {
+  document.getElementById("stats").style.display = 'flex'
   step = 0
 
   if (!mazeImg) {
@@ -338,8 +366,11 @@ function startSearch() {
         })
 
         // temporary code to prevent unlimited repetition
-        if (step > 15000) {
+        if (step > 15000) {                    
           cancelAnimationFrame(animate)
+          failedCount++
+          document.getElementById("failed_count").innerHTML = failedCount
+          initialize()
           return
           }
         step ++
@@ -360,7 +391,8 @@ function prepareBackground() {
     };
 
   mazeImg.src = srcCanvas.toDataURL()
-  srcCanvas.parentNode.removeChild(srcCanvas);
+  //srcCanvas.parentNode.removeChild(srcCanvas);
+  srcCanvas.style.display = 'none';
 
   return mazeImg
 }
@@ -378,7 +410,7 @@ function MagicBall(mazeImg) {
   radiusStep = 1
   ballStep = 1  
   reduceRadarRadius = 5
-  angleStep = 0.01
+  angleStep = 0.008
     
   this.prevRadius = startRadius
 
@@ -416,7 +448,13 @@ function MagicBall(mazeImg) {
             console.log('done')
             this.drawPath()
             cancelAnimationFrame(animate)
-            step = 15000
+            successCount ++
+            document.getElementById("success_count").innerHTML = successCount
+            stepsArr.push(step)
+            
+            document.getElementById("avg_steps").innerHTML = stepsArr.reduce((a, b) => a + b, 0) / stepsArr.length;
+            initialize()            
+            return
           }
 
       // move to next step    
@@ -592,8 +630,7 @@ function MagicBall(mazeImg) {
     && (
       (element.radius > radius-14 && element.radius < radius+14)
          && element.angle > angle-radians15 && element.angle < angle+radians15
-         )
-         
+         )         
     )
   }  
 
@@ -647,8 +684,17 @@ window.onload = function() {
 </script>
 </head>
 <body style="overflow: hidden;">
-  <div>
-    <input type="button" onClick="findSolution()" value="I'm too lazy ... "/>
+  <div style="display: flex;">
+    <input type="button" onClick="findSolution()" value="I'm too lazy ... "/>    
+    <div id="stats" style="display:none;">
+      <div style="display: flex; margin-right: 10px;">failed: <div id="failed_count">0</div> </div>
+      <div style="display: flex; margin-right: 10px;">success: <div id="success_count">0</div></div>
+      <div style="display: flex; margin-right: 10px;">avg steps: <div id="avg_steps">0</div></div>
+      <div>
+        <input type="checkbox" id="unlimited" name="unlimited" checked/>
+        <label for="horns">Continue automatically...</label>
+      </div>
+  </div>
   </div>
   <div>
     <canvas id="canvas1" width=800 height=800></canvas>

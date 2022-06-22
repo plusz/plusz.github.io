@@ -452,7 +452,7 @@ function MagicBall(mazeImg) {
             document.getElementById("success_count").innerHTML = successCount
             stepsArr.push(step)
             
-            document.getElementById("avg_steps").innerHTML = stepsArr.reduce((a, b) => a + b, 0) / stepsArr.length;
+            document.getElementById("avg_steps").innerHTML = Math.floor(stepsArr.reduce((a, b) => a + b, 0) / stepsArr.length)
             initialize()            
             return
           }

@@ -349,12 +349,7 @@ function findSolution() {
   document.getElementById("stats").style.display = 'flex'
   step = 0
   prevTime = Date.now()
-
-  delay = 8
-  if (document.getElementById("turbo").checked) {
-    delay = 0
-  }     
-
+    
   if (!mazeImg) {
     mazeImg = prepareBackground()
   }  
@@ -365,12 +360,12 @@ function findSolution() {
     
   clearTimeout(animate)  
   magicBall.init(mazeImg)
-  animate = setTimeout(doSearch, delay)
+  doSearch()
 }
 
 function doSearch() {  
   // failed if not resolved withing 15000 steps
-  if (step > 15000) {                    
+  if (step > 15000 || (Math.abs(this.x - centerX) > centerX-50 && Math.abs(this.y-centerY) > centerY-50)) {                    
     failedCount++
     document.getElementById("failed_count").innerHTML = failedCount
     magicBall.drawPath()
@@ -379,6 +374,11 @@ function doSearch() {
     }
   step ++
   magicBall.go()
+
+  delay = 8
+  if (document.getElementById("turbo").checked) {
+    delay = 0
+  } 
   animate = setTimeout(doSearch, delay)
 
 }

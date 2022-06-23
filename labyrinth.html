@@ -587,7 +587,10 @@ function MagicBall(mazeImg) {
 
   // detects if pixels are white
   this.checkIfWhite = (pixels) => {
-    isWhite = pixels.reduce((partialSum, a) => partialSum + a, 0) / pixels.length === 255
+    // this fix is needed for browsers other than Chrome.
+    // it seems that Safari renders smoothed ball and walls so 1-2 pixels are not fully black or fully white but can be like 234,234,255 or 255,234,234 etc.
+    // same in safari on iOS
+    isWhite = pixels.reduce((partialSum, a) => partialSum + a, 0) / pixels.length > 220
     return isWhite
   }  
 

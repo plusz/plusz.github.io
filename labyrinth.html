@@ -20,7 +20,6 @@ stepsArr = []
 timeArr = []
 
 animate = null
-delay = 5
 mazeImg = null
 
 function mulberry32(a) {
@@ -325,6 +324,7 @@ function findSolution() {
   step = 0
   prevTime = Date.now()
 
+  delay = 5
   if (document.getElementById("turbo").checked) {
     delay = 0.0005
   }     
@@ -345,9 +345,10 @@ function startSearch() {
   }, delay)
 
   // failed if not resolved withing 13000 steps
-  if (step > 13000) {                    
+  if (step > 15000) {                    
     failedCount++
     document.getElementById("failed_count").innerHTML = failedCount
+    magicBall.drawPath()
     initialize()
     return
     }
@@ -379,6 +380,7 @@ function prepareBackground() {
 function MagicBall(mazeImg) {
   radiansLimit = Math.PI * 2
   radians90 = Math.PI/2
+  radians45 = Math.PI/4
   radians10 = Math.PI/18  
   radians15 = 2*Math.PI/24
   startRadius = 280
@@ -404,7 +406,8 @@ function MagicBall(mazeImg) {
 
   this.radius = startRadius
   this.angle = 3*Math.PI / 2
-  
+
+  this.hasGapCount = 0  
   this.rotationChanged = 0
   this.visitedGaps = []
   this.gapId = 0
@@ -503,8 +506,11 @@ function MagicBall(mazeImg) {
     yDist = radarDistance * angleDirection
 
     hasGap = this.checkPixels(xStart, yStart, xDist, yDist)    
+    
+    if (hasGap) {this.hasGapCount++}
 
-    if (hasGap) {      
+    if (this.hasGapCount === 2 || (hasGap && this.mode === 'inOut')) {      
+      this.hasGapCount = 0
       /*
       // we check additional points to confirm gap - angle method 
       // this was less accurate, but when improved, may be better
@@ -518,8 +524,10 @@ function MagicBall(mazeImg) {
       let radars = [
         {radius: this.ballRadius-reduceRadarRadius, angle: this.angle+radians90},
         {radius: this.ballRadius-reduceRadarRadius, angle: this.angle-radians90},
-        {radius: this.ballRadius-reduceRadarRadius-2, angle: this.angle},
-        {radius: this.ballRadius-reduceRadarRadius-1, angle: this.angle}
+        {radius: this.ballRadius-reduceRadarRadius, angle: this.angle+radians45},
+        {radius: this.ballRadius-reduceRadarRadius, angle: this.angle-radians45},
+        //{radius: this.ballRadius-reduceRadarRadius-2, angle: this.angle},
+        //{radius: this.ballRadius-reduceRadarRadius-1, angle: this.angle}
       ]
 
       // we check additional points to confirm gap - radius method
@@ -545,7 +553,7 @@ function MagicBall(mazeImg) {
         this.ballColor = ballFillStyle['gap']
         
           // We save gate only if radius decreased 
-          if (Math.abs(radarRadius-this.prevRadius) > gateWidth/2) {
+          if (Math.abs(radarRadius-this.prevRadius) >= gateWidth/2) {
             let gap = {id: this.gapId, x: xStart, y: yStart, angle: this.angle, radius: this.prevRadius, direction: this.radiusDirection, rotation: this.rotation}
             this.prevRadius = radarRadius
             this.visitedGaps.push(gap)            
@@ -604,7 +612,7 @@ function MagicBall(mazeImg) {
   this.matchingVisitedGaps = (radius, angle, direction) => {
     return this.visitedGaps.filter(element => element.direction !== direction 
     && (
-      (element.radius > radius-15 && element.radius < radius+15)
+      (element.radius > radius-14 && element.radius < radius+14)
          && element.angle > angle-radians15 && element.angle < angle+radians15
          )         
     )

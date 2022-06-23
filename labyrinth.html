@@ -19,6 +19,7 @@ walls = []
 stepsArr = []
 timeArr = []
 
+delay = 8
 animate = null
 mazeImg = null
 magicBall = null
@@ -309,9 +310,9 @@ function restart() {
   mazeImg = null 
   magicBall = null
 
-  srcCanvas = document.getElementById("canvas1")
-  srcCanvas.style.display = 'block';
-  srcCanvas.getContext("2d").clearRect(0, 0, srcCanvas.width, srcCanvas.height);
+  canvas = document.getElementById("canvas1")
+  canvas.style.display = 'block';
+  canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
 
   populateGatesAndWalls()  
   drawAsCircles()
@@ -351,7 +352,7 @@ function findSolution() {
 
   delay = 8
   if (document.getElementById("turbo").checked) {
-    delay = 0.008
+    delay = 0
   }     
 
   if (!mazeImg) {
@@ -368,9 +369,7 @@ function findSolution() {
 }
 
 function doSearch() {  
-  clearTimeout(animate) 
-  animate = setTimeout(doSearch, delay)
-  // failed if not resolved withing 13000 steps
+  // failed if not resolved withing 15000 steps
   if (step > 15000) {                    
     failedCount++
     document.getElementById("failed_count").innerHTML = failedCount
@@ -380,6 +379,7 @@ function doSearch() {
     }
   step ++
   magicBall.go()
+  animate = setTimeout(doSearch, delay)
 
 }
 
@@ -387,7 +387,7 @@ function doSearch() {
 function prepareBackground() {
   const mazeImg = new Image();
 
-  srcCanvas = document.getElementById("canvas1")
+  canvas = document.getElementById("canvas1")
   canvas_maze = document.getElementById("canvas_maze").getContext("2d")
 
   mazeImg.id = "mazeImg";
@@ -395,9 +395,8 @@ function prepareBackground() {
     canvas_maze.drawImage(mazeImg, 0, 0)
     };
 
-  mazeImg.src = srcCanvas.toDataURL()
-  //srcCanvas.parentNode.removeChild(srcCanvas);
-  srcCanvas.style.display = 'none';
+  mazeImg.src = canvas.toDataURL()
+  canvas.style.display = 'none';
 
   return mazeImg
 }
@@ -406,23 +405,22 @@ function prepareBackground() {
 function MagicBall() {
   radiansLimit = Math.PI * 2
   radians90 = Math.PI/2
-  radians45 = Math.PI/4
-  radians10 = Math.PI/18  
-  radians15 = 2*Math.PI/24
+  radians15 = Math.PI/12
   radians1 = Math.PI/180 
+
   startRadius = 280
 
   radarDistance = 1
-  angleDistance = 1
   radiusStep = 1
-  ballStep = 1  
-  reduceRadarRadius = 5
   angleStep = 0.0075
+
+  showRadar = false
+
+  
   ballFillStyle = []
   ballFillStyle['in'] = 'red'
   ballFillStyle['out'] = 'blue'
-  ballFillStyle['gap'] = 'orange'
-  
+  ballFillStyle['gap'] = 'orange' 
 
   this.init = (mazeImg) => {
     this.mazeImg = mazeImg
@@ -442,9 +440,12 @@ function MagicBall() {
     this.visitedGaps = []
     this.gapId = 0
 
+    // initial ball position
+    this.x = centerX
+    this.y = this.getYfromAngle(centerY, this.radius, this.angle)      
+
     // TODO this require improvements  
     this.renderVisitedGaps = false  
-    showRadar = false
   }
 
   this.go = () => {
@@ -656,13 +657,11 @@ function MagicBall() {
 
     // helper functionality when we need to visualize radars
     if (showRadar) {
-      canvas_maze.beginPath()
+        canvas_maze.beginPath()
         canvas_maze.arc(this.radarX, this.radarY, 1, 0, 2 * Math.PI, false)
         canvas_maze.fillStyle = 'green'
         canvas_maze.fill() 
     }
-      
-
   }   
 
   this.drawPath = () => {
@@ -673,11 +672,6 @@ function MagicBall() {
         canvas_maze.fill()   
       });
   }
-
-  // initial ball position
-  this.x = centerX
-  this.y = this.getYfromAngle(centerY, this.radius, this.angle)  
-
 }
 
 window.onload = function() {

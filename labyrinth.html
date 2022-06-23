@@ -1,10 +1,5 @@
 <html>
 <head>
-  <style>
-    body {
-      cursor: crosshair;
-    }    
-  </style>
 <script>
 
 successCount = 0
@@ -298,26 +293,6 @@ function hookUpScribbling() {
   canvas.addEventListener('touchmove', handleMove)
 }
 
-function positionDetection() {
-  canvas = document.getElementById("canvas_maze")
-  c = canvas.getContext("2d")
-
-  function getDirectlyOrFromFirstChangedTouch(event, key) {
-    return event[key] === undefined ? event.changedTouches[0][key] : event[key]
-  }
-
-  function checkPosition(event) {
-    lastX = getDirectlyOrFromFirstChangedTouch(event, "clientX")
-    lastY = getDirectlyOrFromFirstChangedTouch(event, "clientY")
-    console.log(lastX, lastY)
-  }
-
-  canvas.addEventListener('mousedown', checkPosition)
-  canvas.addEventListener('touchstart', checkPosition)
-
-}
-
-
 function initialize() {  
   if (!document.getElementById("unlimited").checked) {
       return
@@ -356,7 +331,6 @@ function findSolution() {
 
   if (!mazeImg) {
     mazeImg = prepareBackground()
-    positionDetection()
   }  
 
   magicBall = new MagicBall(mazeImg)    

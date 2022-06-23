@@ -349,7 +349,7 @@ function findSolution() {
   step = 0
   prevTime = Date.now()
 
-  delay = 10
+  delay = 8
   if (document.getElementById("turbo").checked) {
     delay = 0.05
   }     
@@ -368,6 +368,7 @@ function findSolution() {
 }
 
 function doSearch() {  
+  clearTimeout(animate) 
   animate = setTimeout(doSearch, delay)
   // failed if not resolved withing 13000 steps
   if (step > 15000) {                    

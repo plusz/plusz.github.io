@@ -292,10 +292,14 @@ function hookUpScribbling() {
   canvas.addEventListener('touchmove', handleMove)
 }
 
-function initialize() {  
+function restart() {    
+  if (document.getElementById("solutions").checked) {
+      appendSolution()     
+    }  
   if (!document.getElementById("unlimited").checked) {
-      return
-    }
+      clearInterval(animate)
+      return      
+  }    
  
   gates = []
   walls = []
@@ -305,14 +309,33 @@ function initialize() {
 
   srcCanvas = document.getElementById("canvas1")
   srcCanvas.style.display = 'block';
-  canvas_maze = document.getElementById("canvas_maze").getContext("2d")
-  
   srcCanvas.getContext("2d").clearRect(0, 0, srcCanvas.width, srcCanvas.height);
 
   populateGatesAndWalls()  
   drawAsCircles()
   findSolution()
+}
 
+function appendSolution() {
+  canvas_maze = document.getElementById("canvas_maze").getContext("2d")
+  let cmWidth = canvas_maze.canvas.width
+  let cmHeight = canvas_maze.canvas.height
+  let imgData = canvas_maze.getImageData(0, 0, cmWidth, cmHeight);
+
+  var solutionImg = new Image();
+  solutionImg.src = getImageURL(imgData, cmWidth, cmHeight);
+
+  // append image element to body
+  document.body.appendChild(solutionImg);
+}
+
+function getImageURL(imgData, width, height) {
+   let canvas = document.createElement('canvas');
+   let ctx = canvas.getContext('2d');
+   canvas.width = width;
+   canvas.height = height;
+   ctx.putImageData(imgData, 0, 0);
+   return canvas.toDataURL(); //image URL
 }
 
 /**
@@ -320,6 +343,7 @@ function initialize() {
 /*
 **/
 function findSolution() {
+  clearInterval(animate)
   document.getElementById("stats").style.display = 'flex'
   step = 0
   prevTime = Date.now()
@@ -334,22 +358,20 @@ function findSolution() {
   }  
 
   magicBall = new MagicBall(mazeImg)    
-  animate = setTimeout(function(magicBall) { 
-          startSearch(magicBall)
-        }, delay)
+  animate = setInterval(function(magicBall) { 
+    startSearch(magicBall)
+  }, delay)
 }
 
 function startSearch() {  
-  setTimeout(function(magicBall) { 
-    startSearch(magicBall)
-  }, delay)
+ 
 
   // failed if not resolved withing 13000 steps
   if (step > 15000) {                    
     failedCount++
     document.getElementById("failed_count").innerHTML = failedCount
     magicBall.drawPath()
-    initialize()
+    restart()
     return
     }
   step ++
@@ -383,6 +405,7 @@ function MagicBall(mazeImg) {
   radians45 = Math.PI/4
   radians10 = Math.PI/18  
   radians15 = 2*Math.PI/24
+  radians1 = Math.PI/180 
   startRadius = 280
 
   radarDistance = 1
@@ -435,7 +458,7 @@ function MagicBall(mazeImg) {
             
             document.getElementById("avg_steps").innerHTML = Math.floor(stepsArr.reduce((a, b) => a + b, 0) / stepsArr.length)
             document.getElementById("avg_time").innerHTML = Math.floor(timeArr.reduce((a, b) => a + b, 0) / timeArr.length)
-            initialize()            
+            restart()            
             return
           }
 
@@ -511,39 +534,28 @@ function MagicBall(mazeImg) {
 
     if (this.hasGapCount === 2 || (hasGap && this.mode === 'inOut')) {      
       this.hasGapCount = 0
-      /*
-      // we check additional points to confirm gap - angle method 
-      // this was less accurate, but when improved, may be better
-      xStart1 = this.getXfromAngle(centerX, radarRadius, this.angle-angleGapWidth*(startRadius/this.radius/2))    
-      yStart1 = this.getYfromAngle(centerY, radarRadius, this.angle-angleGapWidth*(startRadius/this.radius/2))    
-      xStart2 = this.getXfromAngle(centerX, radarRadius, this.angle+angleGapWidth*(startRadius/this.radius/2))    
-      yStart2 = this.getYfromAngle(centerY, radarRadius, this.angle+angleGapWidth*(startRadius/this.radius/2))    
-      */
- 
-      // radars - coortinates of pixels to detect wall or gap
+
+      // radars - coordinates of pixels to detect wall or gap
       let radars = [
-        {radius: this.ballRadius-reduceRadarRadius, angle: this.angle+radians90},
-        {radius: this.ballRadius-reduceRadarRadius, angle: this.angle-radians90},
-        {radius: this.ballRadius-reduceRadarRadius, angle: this.angle+radians45},
-        {radius: this.ballRadius-reduceRadarRadius, angle: this.angle-radians45},
-        //{radius: this.ballRadius-reduceRadarRadius-2, angle: this.angle},
-        //{radius: this.ballRadius-reduceRadarRadius-1, angle: this.angle}
+        {cx: centerX, cy: centerY, radius: radarRadius, angle: this.angle+radians1},
+        {cx: centerX, cy: centerY, radius: radarRadius, angle: this.angle-radians1},
       ]
 
       // we check additional points to confirm gap - radius method
-      radars.forEach((radar) => {
-        xR = this.getXfromAngle(xStart, radar.radius, radar.angle) 
-        yR = this.getXfromAngle(yStart, radar.radius, radar.angle) 
+      radarGaps = radars.filter((radar) => {
+        xR = this.getXfromAngle(radar.cx, radar.radius, radar.angle) 
+        yR = this.getYfromAngle(radar.cy, radar.radius, radar.angle) 
         hasGap = this.checkPixels(xR, yR, xDist, yDist) 
         // displaying radar - debugging helper
         this.radarX = xR
         this.radarY = yR
 
-        // if any radar fails, there is no gap
-        if (!hasGap) {
-          return false
-        }
+        return hasGap 
       })
+
+      if (radarGaps.length < radars.length) {
+        return false
+      }
 
       // TODO check gaps only if angle changed - to avoid detecting the same gap multimple times 
       const matchingGaps = this.matchingVisitedGaps(this.radius, this.angle, this.radiusDirection)
@@ -634,7 +646,7 @@ function MagicBall(mazeImg) {
     // helper functionality when we need to visualize radars
     if (showRadar) {
       canvas_maze.beginPath()
-        canvas_maze.arc(this.radarX4, this.radarY4, 1, 0, 2 * Math.PI, false)
+        canvas_maze.arc(this.radarX, this.radarY, 1, 0, 2 * Math.PI, false)
         canvas_maze.fillStyle = 'green'
         canvas_maze.fill() 
     }
@@ -668,27 +680,31 @@ window.onload = function() {
 
 </script>
 </head>
-<body style="overflow: hidden;">
+<body>
   <input type="button" onClick="findSolution()" value="I'm too lazy ... "/>    
   <div>
     <canvas id="canvas1" width=800 height=600></canvas>
     <canvas id="canvas_maze" width=800 height=600></canvas>
   </div>
-  <div style="display: flex;">    
+  <div>    
     <div id="stats" style="display:none;">
-      <div style="display: flex; margin-left: 10px; margin-right: 10px;">failed: <div id="failed_count">0</div> </div>
+      <div style="display: flex; margin-right: 10px;">failed: <div id="failed_count">0</div> </div>
       <div style="display: flex; margin-right: 10px;">success: <div id="success_count">0</div></div>
       <div style="display: flex; margin-right: 10px;">avg steps: <div id="avg_steps">0</div></div>
-      <div style="display: flex; margin-right: 10px;">avg time: <div id="avg_time">0</div></div>
-      <div>
-        <input type="checkbox" id="unlimited" name="unlimited" checked/>
-        <label for="horns">Continue automatically...</label>
-      </div>
-      <div>
-        <input type="checkbox" id="turbo" name="turbo"/>
-        <label for="horns">Turbo mode (next iteration)...</label>
-      </div>
+      <div style="display: flex; margin-right: 10px;">avg time: <div id="avg_time">0</div></div>      
     </div>
+    <div>
+      <input type="checkbox" id="unlimited" name="unlimited" checked/>
+      <label for="unlimited">Continue automatically...</label>
+    </div>
+    <div>
+      <input type="checkbox" id="turbo" name="turbo"/>
+      <label for="turbo">Turbo mode (next iteration)...</label>
+    </div>
+    <div>
+      <input type="checkbox" id="solutions" name="solutions"/>
+      <label for="solutions">Save solutions...</label>
+    </div>    
   </div>
-</body>
+</bod>
 </html>

@@ -369,7 +369,6 @@ function doSearch(magicBall) {
 
 }
 
-
 function prepareBackground() {
   const mazeImg = new Image();
 
@@ -432,7 +431,6 @@ function MagicBall() {
     this.radius = startRadius
     this.angle = radians270
 
-    this.hasGapCount = 0  
     this.rotationChanged = 0
     this.visitedGaps = []
     this.gapId = 0
@@ -542,13 +540,7 @@ function MagicBall() {
 
     const hasGap = this.checkPixels(xStart, yStart, angleDirection, angleDirection)    
     
-    if (hasGap) {this.hasGapCount++}
-
-    // this improves accuracy - we don't explore gap until confirmed with another cycle
-    // or if mode is 'inOut'
-    if (this.hasGapCount === 2 || (hasGap && this.mode === 'inOut')) {      
-      this.hasGapCount = 0
-
+    if (hasGap || this.mode === 'inOut') {            
       // radars - coordinates of pixels to detect wall or gap - gap confirmation
       // this can be extended to improve accuracy of wall detection
       const radars = [

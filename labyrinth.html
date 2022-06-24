@@ -455,10 +455,12 @@ function MagicBall() {
   
   this.checkSolution = () => {
     // success if in the center
-    if ((Math.abs(this.x - centerX) < centerX/20 && Math.abs(this.y-centerY) < centerY/20))
+    const distFromTheCenter = {x: Math.abs(this.x - centerX), y: Math.abs(this.y-centerY)}
+
+    if ((distFromTheCenter.x < centerX/20 && distFromTheCenter.y < centerY/20))
       {
-        successCount ++
-        const elapsedTime = (Date.now() - prevTime)/1000
+        elapsedTime = (Date.now() - prevTime)/1000
+        successCount ++        
         prevTime = Date.now()
                     
         stepsArr.push(step)            
@@ -471,7 +473,7 @@ function MagicBall() {
       }
 
     // failed if not resolved withing 15000 steps or outside circle
-    if (step > 15000 || (Math.abs(this.x - centerX) > centerX-50 && Math.abs(this.y-centerY) > centerY-50)) {                    
+    if (step > 15000 || (distFromTheCenter.x > centerX-50 && distFromTheCenter.y > centerY-50)) {                    
       failedCount++
       document.getElementById("failed_count").innerHTML = failedCount
       return true
@@ -480,7 +482,7 @@ function MagicBall() {
       return false
   }
 
-
+  // main method moving ball
   this.move = () => {
       switch (this.mode) {
         case 'inOut':           
@@ -525,6 +527,7 @@ function MagicBall() {
     return !this.checkPixels(xStart, yStart, angleDirection, angleDirection)    
   }
 
+  // detects if ball can go more inside/outside
   this.checkArcGap = () => {    
     const radarDirection = this.radiusDirection === 'in' ? -1 : 1
     const radarRadius = this.radius + radarDirection*this.ballRadius
@@ -635,13 +638,13 @@ function MagicBall() {
   // this method needs to be optimized, to not analyze all gaps
   // after tuning we can replace it with array.some
   this.matchingVisitedGaps = (radius, angle, direction) => {
-    const angleDiffUp = (angle+radians15) % radiansLimit
-    const angleDiffDown = angle-radians15
+    const angleDiffUp = Math.min(angle+radians15, radiansLimit)
+    const angleDiffDown = Math.max(angle-radians15, 0)
 
     return this.visitedGaps.filter(element => element.direction !== direction 
     && (
       (element.radius > radius-14 && element.radius < radius+14)
-         && element.angle > angleDiffDown && element.angle < angleDiffUp
+         && element.angle >= angleDiffDown && element.angle <= angleDiffUp
          )         
     )
   }  

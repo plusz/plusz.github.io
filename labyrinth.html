@@ -362,21 +362,22 @@ function findSolution() {
   if (document.getElementById("turbo").checked) {
     delay = 0
   }
-  doSearch()
+  doSearch(magicBall)
 }
 
-function doSearch() {  
-  // failed if not resolved withing 15000 steps
-  if (step > 15000 || (Math.abs(this.x - centerX) > centerX-50 && Math.abs(this.y-centerY) > centerY-50)) {                    
-    failedCount++
-    document.getElementById("failed_count").innerHTML = failedCount
+function doSearch(magicBall) {  
+  // check success or failure
+  if (magicBall.checkSolution()) {
     magicBall.drawPath()
-    restart()
+    restart()  
     return
-    }
+  }
+
   step ++
   magicBall.go() 
-  animate = setTimeout(doSearch, delay)
+  animate = setTimeout(function() {
+        return doSearch(magicBall)}, 
+    delay)
 
 }
 
@@ -400,7 +401,8 @@ function prepareBackground() {
 
 
 function MagicBall() {
-  radiansLimit = Math.PI * 2
+  radiansLimit = 2 * Math.PI
+  radians270 = 3*Math.PI/2
   radians90 = Math.PI/2
   radians15 = Math.PI/12
   radians1 = Math.PI/180 
@@ -425,10 +427,10 @@ function MagicBall() {
     this.ballColor = ballFillStyle['in']
     this.radiusDirection = 'in' // ['in', 'out']
     this.mode = 'inOut' // ['inOut', 'rotate']
-    this.rotation = 'clockwise' // ['clockwise', 'counterclockwise']
+    this.rotation = 'counterclockwise' // ['clockwise', 'counterclockwise']
 
     this.radius = startRadius
-    this.angle = 3*Math.PI / 2
+    this.angle = radians270
 
     this.hasGapCount = 0  
     this.rotationChanged = 0
@@ -447,29 +449,39 @@ function MagicBall() {
       // check collision      
       this.detectWalls() 
       this.renderBall();
-
-      // check success
-      if ((Math.abs(this.x - centerX) < centerX/20 && Math.abs(this.y-centerY) < centerY/20))
-          {
-            console.log('done')
-            this.drawPath()
-            successCount ++
-            document.getElementById("success_count").innerHTML = successCount
-            stepsArr.push(step)
-            const elapsedTime = (Date.now() - prevTime)/1000
-            timeArr.push(elapsedTime)
-            prevTime = Date.now()
             
-            document.getElementById("avg_steps").innerHTML = Math.floor(stepsArr.reduce((a, b) => a + b, 0) / stepsArr.length)
-            document.getElementById("avg_time").innerHTML = Math.floor(timeArr.reduce((a, b) => a + b, 0) / timeArr.length)
-            restart()            
-            return
-          }
-
       // move to next step    
       this.move()
   }
   
+  this.checkSolution = () => {
+    // success if in the center
+    if ((Math.abs(this.x - centerX) < centerX/20 && Math.abs(this.y-centerY) < centerY/20))
+      {
+        successCount ++
+        const elapsedTime = (Date.now() - prevTime)/1000
+        prevTime = Date.now()
+                    
+        stepsArr.push(step)            
+        timeArr.push(elapsedTime)
+        
+        document.getElementById("success_count").innerHTML = successCount
+        document.getElementById("avg_steps").innerHTML = Math.floor(stepsArr.reduce((a, b) => a + b, 0) / stepsArr.length)
+        document.getElementById("avg_time").innerHTML = Math.floor(timeArr.reduce((a, b) => a + b, 0) / timeArr.length)          
+        return true
+      }
+
+    // failed if not resolved withing 15000 steps or outside circle
+    if (step > 15000 || (Math.abs(this.x - centerX) > centerX-50 && Math.abs(this.y-centerY) > centerY-50)) {                    
+      failedCount++
+      document.getElementById("failed_count").innerHTML = failedCount
+      return true
+      }          
+
+      return false
+  }
+
+
   this.move = () => {
       switch (this.mode) {
         case 'inOut':           
@@ -477,27 +489,28 @@ function MagicBall() {
           break        
         case 'rotate':  
           this.angle = (this.angle + ((this.rotation === 'counterclockwise') ? -angleStep : angleStep)) % radiansLimit
-          if (this.angle < 0) this.angle += radiansLimit;          
+          if (this.angle < 0) {this.angle += radiansLimit};
           break          
       }
 
     // gets ball coordinates
     this.x = this.getXfromAngle(centerX, this.radius, this.angle)    
-    this.y = this.getYfromAngle(centerY, this.radius, this.angle)    
-    
-  };
+    this.y = this.getYfromAngle(centerY, this.radius, this.angle)        
+  }
 
   // detects if there is gap or horizontal wall
   this.detectWalls = () => {
-    if (this.mode === 'rotate') {
-      this.checkHorizontalWall()
+    if (this.checkHorizontalWall()) {
+        this.changeRotation()
     }
 
-    if (this.checkArcWall()) {
-      return
-    }
+    if (this.checkArcGap()) {
+        this.mode = 'inOut'
+        this.rotationChanged = 0
+        return
+    }    
 
-    this.mode = 'rotate'   
+    this.mode = 'rotate'
     this.ballColor = ballFillStyle[this.radiusDirection]
   }
 
@@ -510,22 +523,16 @@ function MagicBall() {
     const yStart = this.getYfromAngle(this.y, this.ballRadius-1, this.angle+radians90*angleDirection)
 
     // check horizontal image
-    const hasHorizontalWall = !this.checkPixels(xStart, yStart, angleDirection, angleDirection)
-    
-    if (hasHorizontalWall && this.mode === 'rotate') {
-      this.changeRotation()          
-      return true
-    } 
+    return !this.checkPixels(xStart, yStart, angleDirection, angleDirection)    
   }
 
-  this.checkArcWall = () => {    
+  this.checkArcGap = () => {    
     const radarDirection = this.radiusDirection === 'in' ? -1 : 1
     const radarRadius = this.radius + radarDirection*this.ballRadius
     
     // coordinates for first check
     const xStart = this.getXfromAngle(centerX, radarRadius, this.angle)    
     const yStart = this.getYfromAngle(centerY, radarRadius, this.angle)    
-
     const angleDirection = this.getAngleDirection()
 
     const hasGap = this.checkPixels(xStart, yStart, angleDirection, angleDirection)    
@@ -562,15 +569,13 @@ function MagicBall() {
           this.prevRadius = radarRadius
           this.visitedGaps.push(gap)            
           this.gapId++
-        }
-        
-        this.mode = 'inOut'
-        this.rotationChanged = 0
+        }                
         return true
       }  
     }
   }    
-  
+
+
   this.getRadarGaps = (radars, xDist, yDist) => {
     const radarGaps = radars.filter((radar) => {
         const xR = this.getXfromAngle(radar.cx, radar.radius, radar.angle) 
@@ -631,10 +636,13 @@ function MagicBall() {
   // this method needs to be optimized, to not analyze all gaps
   // after tuning we can replace it with array.some
   this.matchingVisitedGaps = (radius, angle, direction) => {
+    const angleDiffUp = (angle+radians15) % radiansLimit
+    const angleDiffDown = angle-radians15
+
     return this.visitedGaps.filter(element => element.direction !== direction 
     && (
       (element.radius > radius-14 && element.radius < radius+14)
-         && element.angle > angle-radians15 && element.angle < angle+radians15
+         && element.angle > angleDiffDown && element.angle < angleDiffUp
          )         
     )
   }  

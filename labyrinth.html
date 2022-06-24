@@ -346,7 +346,7 @@ function getImageURL(imgData, width, height) {
 /*
 **/
 function findSolution() {  
-  document.getElementById("stats").style.display = 'flex'
+  document.getElementById("stats").style.display = 'block'
   step = 0
   prevTime = Date.now()
     
@@ -357,9 +357,11 @@ function findSolution() {
     magicBall = new MagicBall(mazeImg)
   }
   
-    
-  clearTimeout(animate)  
   magicBall.init(mazeImg)
+  delay = 8
+  if (document.getElementById("turbo").checked) {
+    delay = 0
+  }
   doSearch()
 }
 
@@ -373,12 +375,7 @@ function doSearch() {
     return
     }
   step ++
-  magicBall.go()
-
-  delay = 8
-  if (document.getElementById("turbo").checked) {
-    delay = 0
-  } 
+  magicBall.go() 
   animate = setTimeout(doSearch, delay)
 
 }
@@ -410,12 +407,10 @@ function MagicBall() {
 
   startRadius = 280
 
-  radarDistance = 1
   radiusStep = 1
   angleStep = 0.0075
 
   showRadar = false
-
   
   ballFillStyle = []
   ballFillStyle['in'] = 'red'
@@ -461,7 +456,7 @@ function MagicBall() {
             successCount ++
             document.getElementById("success_count").innerHTML = successCount
             stepsArr.push(step)
-            elapsedTime = (Date.now() - prevTime)/1000
+            const elapsedTime = (Date.now() - prevTime)/1000
             timeArr.push(elapsedTime)
             prevTime = Date.now()
             
@@ -510,15 +505,12 @@ function MagicBall() {
   // detects if there is horizontal wall
   this.checkHorizontalWall = () => {
     // check horizontalWall
-    angleDirection = this.getAngleDirection()
-    xStart = this.getXfromAngle(this.x, this.ballRadius-1, this.angle+radians90*angleDirection)
-    yStart = this.getYfromAngle(this.y, this.ballRadius-1, this.angle+radians90*angleDirection)
-
-    xDist = angleDirection
-    yDist = angleDirection
+    const angleDirection = this.getAngleDirection()
+    const xStart = this.getXfromAngle(this.x, this.ballRadius-1, this.angle+radians90*angleDirection)
+    const yStart = this.getYfromAngle(this.y, this.ballRadius-1, this.angle+radians90*angleDirection)
 
     // check horizontal image
-    const hasHorizontalWall = !this.checkPixels(xStart, yStart, xDist, yDist)
+    const hasHorizontalWall = !this.checkPixels(xStart, yStart, angleDirection, angleDirection)
     
     if (hasHorizontalWall && this.mode === 'rotate') {
       this.changeRotation()          
@@ -527,42 +519,33 @@ function MagicBall() {
   }
 
   this.checkArcWall = () => {    
-    radarDirection = this.radiusDirection === 'in' ? -1 : 1
-    radarRadius = this.radius + radarDirection*this.ballRadius
+    const radarDirection = this.radiusDirection === 'in' ? -1 : 1
+    const radarRadius = this.radius + radarDirection*this.ballRadius
     
-    xStart = this.getXfromAngle(centerX, radarRadius, this.angle)    
-    yStart = this.getYfromAngle(centerY, radarRadius, this.angle)    
+    // coordinates for first check
+    const xStart = this.getXfromAngle(centerX, radarRadius, this.angle)    
+    const yStart = this.getYfromAngle(centerY, radarRadius, this.angle)    
 
-    let angleDirection = this.getAngleDirection()
-    xDist = radarDistance * angleDirection
-    yDist = radarDistance * angleDirection
+    const angleDirection = this.getAngleDirection()
 
-    hasGap = this.checkPixels(xStart, yStart, xDist, yDist)    
+    const hasGap = this.checkPixels(xStart, yStart, angleDirection, angleDirection)    
     
     if (hasGap) {this.hasGapCount++}
 
+    // this improves accuracy - we don't explore gap until confirmed with another cycle
+    // or if mode is 'inOut'
     if (this.hasGapCount === 2 || (hasGap && this.mode === 'inOut')) {      
       this.hasGapCount = 0
 
-      // radars - coordinates of pixels to detect wall or gap
-      let radars = [
+      // radars - coordinates of pixels to detect wall or gap - gap confirmation
+      // this can be extended to improve accuracy of wall detection
+      const radars = [
         {cx: centerX, cy: centerY, radius: radarRadius, angle: this.angle+radians1},
         {cx: centerX, cy: centerY, radius: radarRadius, angle: this.angle-radians1},
       ]
 
       // we check additional points to confirm gap - radius method
-      radarGaps = radars.filter((radar) => {
-        xR = this.getXfromAngle(radar.cx, radar.radius, radar.angle) 
-        yR = this.getYfromAngle(radar.cy, radar.radius, radar.angle) 
-        hasGap = this.checkPixels(xR, yR, xDist, yDist) 
-        // displaying radar - debugging helper
-        this.radarX = xR
-        this.radarY = yR
-
-        return hasGap 
-      })
-
-      if (radarGaps.length < radars.length) {
+      if (this.getRadarGaps(radars, angleDirection, angleDirection)) {
         return false
       }
 
@@ -573,13 +556,13 @@ function MagicBall() {
       if (matchingGaps.length === 0) {
         this.ballColor = ballFillStyle['gap']
         
-          // We save gate only if radius decreased 
-          if (Math.abs(radarRadius-this.prevRadius) >= gateWidth/2) {
-            let gap = {id: this.gapId, x: xStart, y: yStart, angle: this.angle, radius: this.prevRadius, direction: this.radiusDirection, rotation: this.rotation}
-            this.prevRadius = radarRadius
-            this.visitedGaps.push(gap)            
-            this.gapId++
-          }
+        // We save gate only if radius decreased 
+        if (Math.abs(radarRadius-this.prevRadius) >= gateWidth/2) {
+          const gap = {id: this.gapId, x: xStart, y: yStart, angle: this.angle, radius: this.prevRadius, direction: this.radiusDirection, rotation: this.rotation}
+          this.prevRadius = radarRadius
+          this.visitedGaps.push(gap)            
+          this.gapId++
+        }
         
         this.mode = 'inOut'
         this.rotationChanged = 0
@@ -588,6 +571,21 @@ function MagicBall() {
     }
   }    
   
+  this.getRadarGaps = (radars, xDist, yDist) => {
+    const radarGaps = radars.filter((radar) => {
+        const xR = this.getXfromAngle(radar.cx, radar.radius, radar.angle) 
+        const yR = this.getYfromAngle(radar.cy, radar.radius, radar.angle)         
+        // coordinates for radar - debugging helper
+        this.radarX = xR
+        this.radarY = yR
+
+        return this.checkPixels(xR, yR, xDist, yDist) 
+      })
+
+    return radarGaps.length < radars.length
+  }
+
+
   // detects if there is gap or horizontal wall
   this.checkPixels = (xStart, yStart, xDist, yDist) => {
     const wallPixels = canvas_maze.getImageData(xStart, yStart, xDist, yDist)
@@ -596,11 +594,10 @@ function MagicBall() {
 
   // detects if pixels are white
   this.checkIfWhite = (pixels) => {
-    // this fix is needed for browsers other than Chrome.
+    // fix (220 instead 255) is needed for browsers other than Chrome.
     // it seems that Safari renders smoothed ball and walls so 1-2 pixels are not fully black or fully white but can be like 234,234,255 or 255,234,234 etc.
     // same in safari on iOS
-    isWhite = pixels.reduce((partialSum, a) => partialSum + a, 0) / pixels.length > 220
-    return isWhite
+    return pixels.reduce((partialSum, a) => partialSum + a, 0) / pixels.length > 220
   }  
 
   // sets rotation multiplier
@@ -691,8 +688,8 @@ window.onload = function() {
     <canvas id="canvas1" width=800 height=600></canvas>
     <canvas id="canvas_maze" width=800 height=600></canvas>
   </div>
-  <div>    
-    <div id="stats" style="display:none;">
+  <div id="stats" style="display:none;">    
+    <div style="display:flex">
       <div style="display: flex; margin-right: 10px;">failed: <div id="failed_count">0</div> </div>
       <div style="display: flex; margin-right: 10px;">success: <div id="success_count">0</div></div>
       <div style="display: flex; margin-right: 10px;">avg steps: <div id="avg_steps">0</div></div>

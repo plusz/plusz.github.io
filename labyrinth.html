@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <script>
@@ -409,7 +410,7 @@ function MagicBall() {
   startRadius = 280
 
   radiusStep = 1
-  angleStep = 0.01
+  angleStep = 0.008
 
   showRadar = false
   
@@ -501,14 +502,14 @@ function MagicBall() {
 
   // detects if there is gap or horizontal wall
   this.detectWalls = () => {
-    if (this.checkHorizontalWall()) {
-        this.changeRotation()
-    }
-
     if (this.checkArcGap()) {
         this.mode = 'inOut'
         this.rotationChanged = 0
         return
+    }
+
+    if (this.checkHorizontalWall()) {
+        this.changeRotation()
     }    
 
     this.mode = 'rotate'
@@ -520,8 +521,9 @@ function MagicBall() {
   this.checkHorizontalWall = () => {
     // check horizontalWall
     const angleDirection = this.getAngleDirection()
-    const xStart = this.getXfromAngle(this.x, this.ballRadius-1, this.angle+radians90*angleDirection)
-    const yStart = this.getYfromAngle(this.y, this.ballRadius-1, this.angle+radians90*angleDirection)
+    const ballAngle = this.angle+radians90*angleDirection
+    const xStart = this.getXfromAngle(this.x, this.ballRadius-1, ballAngle)
+    const yStart = this.getYfromAngle(this.y, this.ballRadius-1, ballAngle)
 
     // check horizontal image
     return !this.checkPixels(xStart, yStart, angleDirection, angleDirection)    
@@ -562,7 +564,7 @@ function MagicBall() {
       const matchingGaps = this.matchingVisitedGaps(this.radius, this.angle, this.radiusDirection)
 
       // If none previously visited gap matching, we register new gap
-      if (matchingGaps.length === 0) {
+      if (!matchingGaps) {
         this.ballColor = ballFillStyle['gap']
         
         // We save gate only if radius decreased 
@@ -641,11 +643,9 @@ function MagicBall() {
     const angleDiffUp = Math.min(angle+radians15, radiansLimit)
     const angleDiffDown = Math.max(angle-radians15, 0)
 
-    return this.visitedGaps.filter(element => element.direction !== direction 
-    && (
-      (element.radius > radius-14 && element.radius < radius+14)
-         && element.angle >= angleDiffDown && element.angle <= angleDiffUp
-         )         
+    return this.visitedGaps.some(element => element.direction !== direction 
+    && (element.radius > radius-14 && element.radius < radius+14
+         && element.angle >= angleDiffDown && element.angle <= angleDiffUp)
     )
   }  
 

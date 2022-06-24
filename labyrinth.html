@@ -364,8 +364,8 @@ function doSearch(magicBall) {
   magicBall.go() 
 
   animate = setTimeout(() => {
-        return doSearch(magicBall)}, 
-    delay)
+        return doSearch(magicBall)
+        }, delay)
 
 }
 
@@ -448,6 +448,7 @@ function MagicBall() {
   this.go = () => {
       // check collision      
       this.detectWalls() 
+      this.renderBg()
       this.renderBall();
             
       // move to next step    
@@ -649,13 +650,15 @@ function MagicBall() {
     )
   }  
 
-  // renders ball
-  this.renderBall = () => {   
+  this.renderBg = () => {
     // clear and render background
     canvas_maze.fillStyle = '#ffffff'
     canvas_maze.fillRect(0, 0, 800, 800)
     canvas_maze.drawImage(this.mazeImg, 0, 0)
+  }
 
+  // renders ball
+  this.renderBall = () => {   
     // render ball
     canvas_maze.beginPath()
     canvas_maze.arc(this.x, this.y, this.ballRadius - 3, 0, 2 * Math.PI, false)
